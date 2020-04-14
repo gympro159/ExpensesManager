@@ -1,13 +1,25 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
+import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
 import './index.css';
-import App from './App';
 import * as serviceWorker from './serviceWorker';
+import Home from './screens/Home/Home';
+import Radio from './screens/Radio/Radio';
 
 ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+  <BrowserRouter>
+    <Switch>
+      <Route
+          path="/"
+          exact
+          render={props => <Home {...props} />} />
+      <Route
+          path="/radio-page"
+          exact
+          render={props => <Radio {...props} />} />
+      <Redirect to="/" />
+    </Switch>
+  </BrowserRouter>,
   document.getElementById('root')
 );
 

@@ -1,0 +1,42 @@
+.App {
+  overflow: hidden;
+}
+
+.bg-light {
+  background-image: linear-gradient(
+    to right,
+    rgb(39, 119, 224),
+    rgb(237, 92, 254)
+  );
+}
+
+.box-shadow {
+  box-shadow: 0px 1px 3px 1px grey;
+}
+
+th {
+  background:#eee;
+}
+
+.tableFixHead thead th {
+  position: sticky;
+  top: 0;
+}
+
+.add {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  padding: 10px;
+  padding-right: 20px;
+  padding-left: 20px;
+  font-size: 30px;
+  border-radius: 30px;
+  color: #fff;
+  background-color: red;
+}
+
+.input-group-text {
+  background-color: #FFF;
+  border-right: none;
+}
