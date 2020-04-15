@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from "react";
-import Axios from "axios";
+import { connect } from "react-redux";
 import "./Home.css";
-import Navs from "../../components/Navs/Navs";
 import Filter from "../../components/Filter/Filter";
+import {
+  actFetchExpensesRequest,
+  actAddExpenseRequest,
+  actUpdateExpenseRequest,
+  actDeleteExpenseRequest,
+} from "../../actions/index";
 
-export default function Home() {
+function Home({
+  expenses,
+  fetchAllExpenses,
+  onAddExpense,
+  onUpdateExpense,
+  onDeleteExpense,
+}) {
   var date = new Date();
-  const [loading, setloading] = useState(true);
-  const [list, setList] = useState([]);
   const [checkFilter, setCheckFilter] = useState({
     done: true,
     inprogress: true,
@@ -16,42 +25,48 @@ export default function Home() {
   });
   const [total, setTotal] = useState(0);
   const [expense, setExpense] = useState({
+    id: "",
     total: 0,
-    date: `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`,
+    date: `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`,
     type: "",
     note: "",
     status: "",
   });
-  const [checkEdit, setCheckEdit] = useState(null);
-  useEffect(() => {
-    if (loading) {
-      Axios.get("http://5e8727ef781e48001676b7d9.mockapi.io/list/list")
-        .then((res) => {
-          setList(res.data);
-          calTotal(res.data);
-        })
-        .catch((error) => {
-          console.log(error);
-        });
-    }
-    return () => {
-      setloading(false);
-    };
-  }, [loading]);
+  const [checkEdit, setCheckEdit] = useState(false);
 
-  const calTotal = (list) => {
+  var list = [];
+  expenses.map((item) => {
+    if (
+      ((checkFilter.done && item.status === "Done") ||
+        (checkFilter.inprogress && item.status === "Inprogress")) &&
+      ((checkFilter.income && item.type === "Income") ||
+        (checkFilter.outcome && item.type !== "Income"))
+    )
+      list.push(item);
+  });
+
+  useEffect(() => {
+    async function fetchData() {
+      await fetchAllExpenses();
+      await calTotal(list);
+    }
+    fetchData();
+  }, [fetchAllExpenses, list]);
+
+  const calTotal = (expenses) => {
     let totalTemp = 0;
-    list.forEach((item) => {
-      item.type === "Income"
-        ? (totalTemp += parseInt(item.total, 10))
-        : (totalTemp -= parseInt(item.total, 10));
+    expenses.forEach((expense) => {
+      expense.type === "Income"
+        ? (totalTemp += parseInt(expense.total, 10))
+        : (totalTemp -= parseInt(expense.total, 10));
     });
     setTotal(totalTemp);
-  }
+  };
 
   const editModal = (value) => {
-    setCheckEdit(value.id);
+    setCheckEdit(true);
     setExpense({
+      id: value.id,
       date: value.date,
       total: parseInt(value.total, 10),
       type: value.type,
@@ -61,9 +76,9 @@ export default function Home() {
   };
 
   const addModal = () => {
-    setCheckEdit(null);
+    setCheckEdit(false);
     setExpense({
-      date: `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`,
+      date: `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`,
       total: "",
       type: "Income",
       status: "Inprogress",
@@ -72,31 +87,10 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
+    console.log(checkEdit);
     if (expense.total !== "") {
-      if (checkEdit !== null) {
-        await Axios.put(
-          `http://5e8727ef781e48001676b7d9.mockapi.io/list/list/${checkEdit}`,
-          expense
-        )
-          .then((res) => {
-            console.log(res.data);
-          })
-          .catch((error) => {
-            console.log(error);
-          });
-      } else {
-        console.log(expense);
-        await Axios.post(
-          `http://5e8727ef781e48001676b7d9.mockapi.io/list/list/`,
-          expense
-        )
-          .then((res) => {
-            console.log(res.data);
-          })
-          .catch((error) => {
-            console.log(error);
-          });
-      }
+      await (checkEdit ? onUpdateExpense(expense) : onAddExpense(expense));
+      window.alert("Lưu dữ liệu thành công!");
       window.location.reload();
     } else {
       window.alert("Vui lập nhập giá trị!");
@@ -105,22 +99,14 @@ export default function Home() {
 
   const handleDelete = async () => {
     if (window.confirm("Bạn chắc chắn muốn xóa?")) {
-      await Axios.delete(
-        `http://5e8727ef781e48001676b7d9.mockapi.io/list/list/${checkEdit}`
-      )
-        .then((res) => {
-          console.log(res.data);
-        })
-        .catch((error) => {
-          console.log(error);
-        });
+      await onDeleteExpense(expense.id);
+      window.alert("Xóa dữ liệu thành công!");
       window.location.reload();
     }
   };
 
   return (
     <div className="App">
-      <Navs />
       <div className="container-fluid">
         <div className="row">
           <Filter checkFilter={checkFilter} setCheckFilter={setCheckFilter} />
@@ -142,24 +128,18 @@ export default function Home() {
                 <tbody>
                   {list.map((item, index) => {
                     return (
-                      ((checkFilter.done && item.status === "Done") ||
-                        (checkFilter.inprogress &&
-                          item.status === "Inprogress")) &&
-                      ((checkFilter.income && item.type === "Income") ||
-                        (checkFilter.outcome && item.type !== "Income")) && (
-                        <tr
-                          key={index}
-                          onClick={() => editModal(item)}
-                          data-toggle="modal"
-                          data-target="#exampleModal"
-                        >
-                          <td>{item.date}</td>
-                          <td>{item.type}</td>
-                          <td>{item.total}</td>
-                          <td>{item.status}</td>
-                          <td>{item.note}</td>
-                        </tr>
-                      )
+                      <tr
+                        key={index}
+                        onClick={() => editModal(item)}
+                        data-toggle="modal"
+                        data-target="#exampleModal"
+                      >
+                        <td>{item.date}</td>
+                        <td>{item.type}</td>
+                        <td>{item.total}</td>
+                        <td>{item.status}</td>
+                        <td>{item.note}</td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -196,7 +176,7 @@ export default function Home() {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title" id="exampleModalLabel">
-                  {checkEdit != null ? `Edit Expense` : `Add Expense`}
+                  {checkEdit ? `Edit Expense` : `Add Expense`}
                 </h5>
                 <button
                   type="button"
@@ -223,7 +203,7 @@ export default function Home() {
                           onChange={(e) =>
                             setExpense({
                               ...expense,
-                              total: e.target.value,
+                              total: parseInt(e.target.value, 10),
                             })
                           }
                         />
@@ -251,7 +231,7 @@ export default function Home() {
                         />
                       </div>
                     </div>
-                    {checkEdit !== null && (
+                    {checkEdit && (
                       <div className="form-check">
                         <label className="form-check-label">
                           <input
@@ -295,7 +275,7 @@ export default function Home() {
                   type="button"
                   className="btn btn-danger"
                   onClick={handleDelete}
-                  style={checkEdit === null ? { display: "none" } : {}}
+                  style={!checkEdit ? { display: "none" } : {}}
                 >
                   Delete
                 </button>
@@ -307,3 +287,28 @@ export default function Home() {
     </div>
   );
 }
+
+const mapStateToProps = (state) => {
+  return {
+    expenses: state.expenses,
+  };
+};
+
+const mapDispatchToProps = (dispatch, props) => {
+  return {
+    fetchAllExpenses: () => {
+      dispatch(actFetchExpensesRequest());
+    },
+    onAddExpense: (expense) => {
+      dispatch(actAddExpenseRequest(expense));
+    },
+    onUpdateExpense: (expense) => {
+      dispatch(actUpdateExpenseRequest(expense));
+    },
+    onDeleteExpense: (id) => {
+      dispatch(actDeleteExpenseRequest(id));
+    },
+  };
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(Home);
